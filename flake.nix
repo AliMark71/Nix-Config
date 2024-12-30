@@ -19,6 +19,7 @@
                 environment.systemPackages = [ 
                     pkgs.asciiquarium
                     pkgs.curl
+                    pkgs.fd
                     pkgs.ffmpeg
                     pkgs.gcc14
                     pkgs.gh
@@ -29,6 +30,7 @@
                     pkgs.neovim
                     pkgs.obsidian
                     pkgs.pinentry_mac
+                    pkgs.ripgrep
                     pkgs.wget
 
                     pkgs.warp-terminal
@@ -36,6 +38,11 @@
 
                 homebrew = {
                     enable = true;
+                    brews = [
+                        "luarocks"
+                    ];
+                    casks = [];
+                    masApps = {};
                     onActivation.cleanup = "zap";
                 };
 
