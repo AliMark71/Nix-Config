@@ -16,56 +16,30 @@
 
                 nixpkgs.config.allowUnfree = true;
 
-                environment.systemPackages = [ 
-                    pkgs.asciiquarium
-                    pkgs.curl
-                    pkgs.fd
-                    pkgs.ffmpeg
-                    pkgs.gcc14
-                    pkgs.gh
-                    pkgs.gnupg
-                    pkgs.lua
-                    pkgs.mkalias
-                    pkgs.neofetch
-                    pkgs.neovim
-                    pkgs.obsidian
-                    pkgs.pinentry_mac
-                    pkgs.ripgrep
-                    pkgs.wget
+                environment.systemPackages = with pkgs; [ 
+                    asciiquarium curl fd
+                    ffmpeg gcc14 gh gnupg
+                    lua neofetch
+                    neovim obsidian
+                    pinentry_mac ripgrep 
+                    wget
 
-                    pkgs.warp-terminal
+                    ghostty raycast warp-terminal
                 ];
 
                 homebrew = {
                     enable = true;
                     brews = [
                         "luarocks"
+                        "mas"
                     ];
                     casks = [];
                     masApps = {};
                     onActivation.cleanup = "zap";
+                    onActivation.autoUpdate = true;
+                    onActivation.upgrade = true;
                 };
-
-                system.activationScripts.applications.text = let
-                    env = pkgs.buildEnv {
-                        name = "system-applications";
-                        paths = config.environment.systemPackages;
-                        pathsToLink = "/Applications";
-                    };
-                in
-                    pkgs.lib.mkForce ''
-                        # Set up applications.
-                        echo "setting up /Applications..." >&2 
-                        rm -rf /Applications/Nix\ Apps
-                        mkdir -p /Applications/Nix\ Apps 
-                        find ${env}/Applications -maxdepth 1 -type l -exec readlink '{}' + |
-                        while read -r src; do
-                            app_name=$(basename "$src")
-                            echo "copying $src" >&2
-                        ${pkgs.mkalias}/bin/mkalias "$src" "/Applications/Nix Apps/$app_name"
-                        done
-                    '';
-
+                
                 # Necessary for using flakes on this system.
                 nix.settings.experimental-features = "nix-command flakes";
 
