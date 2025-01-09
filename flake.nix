@@ -40,6 +40,22 @@
                     onActivation.upgrade = true;
                 };
                 
+                system.defaults = {
+                    NSGlobalDomain = {
+                        InitialKeyRepeat = 1;
+                        KeyRepeat = 71;
+                        "com.apple.trackpad.scaling" = 1.71;
+                        "com.apple.trackpad.forceClick" = true;
+                        "com.apple.swipescrolldirection" = false;
+                    };
+                    menuExtraClock.ShowSeconds = true;
+                    trackpad = {
+                        Clicking = true;
+                        FirstClickThreshold = 0;
+                        SecondClickThreshold = 0;
+                    };
+                };
+
                 # Necessary for using flakes on this system.
                 nix.settings.experimental-features = "nix-command flakes";
 
