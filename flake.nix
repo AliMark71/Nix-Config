@@ -8,53 +8,96 @@
         nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     };
 
-    outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
+    outputs = _inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
         let
-            configuration = { pkgs, config, ... }: {
+            configuration = { pkgs, config, lib, ... }: {
                 # List packages installed in system profile. To search by name, run:
                 # $ nix-env -qaP | grep wget
 
                 nixpkgs.config.allowUnfree = true;
 
-                environment.systemPackages = with pkgs; [ 
-                    asciiquarium curl fd
-                    ffmpeg gcc14 gh gnupg
-                    lua neofetch
-                    neovim obsidian
-                    pinentry_mac ripgrep 
+                environment.systemPackages = lib.lists.flatten (with pkgs; [
+                    asciiquarium cloudflared curl
+                    cmake fd ffmpeg gcc14 go gh
+                    gnupg neofetch neovim ninja
+                    obsidian pnpm pinentry_mac 
+                    ripgrep rustup speedtest-cli
                     wget
 
-                    ghostty raycast warp-terminal
-                ];
+                    (with lua51Packages; [
+                        lua luarocks
+                    ])
+
+
+                    # ghostty-bin
+                    raycast warp-terminal
+
+                    # NIX DLCs
+                    [
+                        otesunki-try
+                    ]
+                ]);
 
                 homebrew = {
                     enable = true;
                     brews = [
-                        "luarocks"
                         "mas"
                     ];
-                    casks = [];
+                    casks = ["Kegworks-App/kegworks/kegworks" "ghostty"];
                     masApps = {};
                     onActivation.cleanup = "zap";
                     onActivation.autoUpdate = true;
                     onActivation.upgrade = true;
                 };
-                
+
+                system.primaryUser = "alisalman";
                 system.defaults = {
                     NSGlobalDomain = {
-                        InitialKeyRepeat = 1;
-                        KeyRepeat = 71;
-                        "com.apple.trackpad.scaling" = 1.71;
-                        "com.apple.trackpad.forceClick" = true;
+                        InitialKeyRepeat                 = 15;
+                        KeyRepeat                        = 2;
+                        "com.apple.trackpad.scaling"     = 1.71;
+                        "com.apple.trackpad.forceClick"  = true;
                         "com.apple.swipescrolldirection" = false;
                     };
-                    menuExtraClock.ShowSeconds = true;
+                    menuExtraClock = {
+                        Show24Hour  = true;
+                        ShowSeconds = true;
+                    };
                     trackpad = {
-                        Clicking = true;
-                        FirstClickThreshold = 0;
+                        Clicking             = true;
+                        FirstClickThreshold  = 0;
                         SecondClickThreshold = 0;
                     };
                 };
+
+                security.pam.services.sudo_local = {
+                     enable = true;
+                     touchIdAuth = true;
+                     watchIdAuth = true;
+                };
+
+                nixpkgs.overlays = [
+                    (self: super: {
+                        otesunki-try = super.stdenv.mkDerivation rec {
+                            pname = "otesunki-try";
+                            version = "2.1";
+                            nativeBuildInputs = [];
+                            buildInputs = [];
+                            installPhase = ''
+                                mkdir -p $out/bin
+                                cp $src $out/bin/try
+                            '';
+                            src = super.writeShellScript "try.sh" ''
+                                nix shell "github:NixOS/nixpkgs/nixpkgs-unstable#$1" --command "$@"
+                            '';
+                            dontUnpack = true;
+                            dontBuild = true;
+                            dontConfigure = true;
+                            dontPatch = true;
+                            dontFixup = true;
+                        };
+                    })
+                ];
 
                 # Necessary for using flakes on this system.
                 nix.settings.experimental-features = "nix-command flakes";
@@ -78,7 +121,7 @@
             # Build darwin flake using:
             # $ darwin-rebuild build --flake .#DarwinPro
             darwinConfigurations."DarwinPro" = nix-darwin.lib.darwinSystem {
-                modules = [ 
+                modules = [
                     configuration
                     nix-homebrew.darwinModules.nix-homebrew
                     {
