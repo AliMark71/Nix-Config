@@ -18,23 +18,24 @@
 
                 environment.systemPackages = lib.lists.flatten (with pkgs; [
                     asciiquarium cloudflared curl
-                    cmake fd ffmpeg gcc14 go gh
-                    gnupg neofetch neovim ninja
-                    obsidian pnpm pinentry_mac 
-                    ripgrep rustup speedtest-cli
-                    wget
+                    clang cmake fd ffmpeg gcc14
+                    go gh gnupg mkvtoolnix neofetch
+                    neovim ninja obsidian pnpm
+                    python3 pinentry_mac ripgrep
+                    rustup speedtest-cli wget
 
                     (with lua51Packages; [
                         lua luarocks
                     ])
 
-
                     # ghostty-bin
-                    raycast warp-terminal
+                    moonlight-qt raycast 
+                    tailscale warp-terminal
 
                     # NIX DLCs
                     [
                         otesunki-try
+                        otesunki-rmunzip
                     ]
                 ]);
 
@@ -50,7 +51,7 @@
                     onActivation.upgrade = true;
                 };
 
-                system.primaryUser = "alisalman";
+                system.primaryUser = "ali";
                 system.defaults = {
                     NSGlobalDomain = {
                         InitialKeyRepeat                 = 15;
@@ -73,7 +74,7 @@
                 security.pam.services.sudo_local = {
                      enable = true;
                      touchIdAuth = true;
-                     watchIdAuth = true;
+                    #watchIdAuth = true;
                 };
 
                 nixpkgs.overlays = [
@@ -89,6 +90,24 @@
                             '';
                             src = super.writeShellScript "try.sh" ''
                                 nix shell "github:NixOS/nixpkgs/nixpkgs-unstable#$1" --command "$@"
+                            '';
+                            dontUnpack = true;
+                            dontBuild = true;
+                            dontConfigure = true;
+                            dontPatch = true;
+                            dontFixup = true;
+                        };
+                        otesunki-rmunzip = super.stdenv.mkDerivation rec {
+                            pname = "otesunki-rmunzip";
+                            version = "1.0";
+                            nativeBuildInputs = [];
+                            buildInputs = [];
+                            installPhase = ''
+                                mkdir -p $out/bin
+                                cp $src $out/bin/rmunzip
+                            '';
+                            src = super.writeShellScript "rmunzip.sh" ''
+                                unzip -qql "$*" | while read -r l d t n ; do rm -fr "$n" ; done
                             '';
                             dontUnpack = true;
                             dontBuild = true;
@@ -128,7 +147,7 @@
                         nix-homebrew = {
                             enable = true;
                             enableRosetta = true;
-                            user = "alisalman";
+                            user = "ali";
                             autoMigrate = true;
                         };
                     }
