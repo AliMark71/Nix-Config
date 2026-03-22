@@ -3,14 +3,26 @@
 
     inputs = {
         nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-        nix-darwin.url = "github:LnL7/nix-darwin";
-        nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+        nix-darwin = {
+            url = "github:LnL7/nix-darwin";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
+        nixos-wsl = {
+            url = "github:nix-community/NixOS-WSL/main";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
         nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
     };
 
-    outputs = _inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
+    outputs = _inputs@{ self, nix-darwin, nixos-wsl, nixpkgs, nix-homebrew }:
         let
-            configuration = { pkgs, config, lib, ... }: {
+            configuration-n = { pkgs, ... }: {
+                environment.systemPackages = with pkgs; [
+                    openssl neovim iperf python3 git otesunki-try
+                ];
+            };
+
+            configuration-d = { pkgs, config, lib, ... }: {
                 # List packages installed in system profile. To search by name, run:
                 # $ nix-env -qaP | grep wget
 
@@ -77,47 +89,6 @@
                     #watchIdAuth = true;
                 };
 
-                nixpkgs.overlays = [
-                    (self: super: {
-                        otesunki-try = super.stdenv.mkDerivation rec {
-                            pname = "otesunki-try";
-                            version = "2.1";
-                            nativeBuildInputs = [];
-                            buildInputs = [];
-                            installPhase = ''
-                                mkdir -p $out/bin
-                                cp $src $out/bin/try
-                            '';
-                            src = super.writeShellScript "try.sh" ''
-                                nix shell "github:NixOS/nixpkgs/nixpkgs-unstable#$1" --command "$@"
-                            '';
-                            dontUnpack = true;
-                            dontBuild = true;
-                            dontConfigure = true;
-                            dontPatch = true;
-                            dontFixup = true;
-                        };
-                        otesunki-rmunzip = super.stdenv.mkDerivation rec {
-                            pname = "otesunki-rmunzip";
-                            version = "1.0";
-                            nativeBuildInputs = [];
-                            buildInputs = [];
-                            installPhase = ''
-                                mkdir -p $out/bin
-                                cp $src $out/bin/rmunzip
-                            '';
-                            src = super.writeShellScript "rmunzip.sh" ''
-                                unzip -qql "$*" | while read -r l d t n ; do rm -fr "$n" ; done
-                            '';
-                            dontUnpack = true;
-                            dontBuild = true;
-                            dontConfigure = true;
-                            dontPatch = true;
-                            dontFixup = true;
-                        };
-                    })
-                ];
-
                 # Necessary for using flakes on this system.
                 nix.settings.experimental-features = "nix-command flakes";
 
@@ -135,13 +106,54 @@
                 # The platform the configuration will be used on.
                 nixpkgs.hostPlatform = "aarch64-darwin";
             };
+
+            nixpkgs.overlays = [
+                (self: super: {
+                 otesunki-try = super.stdenv.mkDerivation rec {
+                 pname = "otesunki-try";
+                 version = "2.1";
+                 nativeBuildInputs = [];
+                 buildInputs = [];
+                 installPhase = ''
+                 mkdir -p $out/bin
+                 cp $src $out/bin/try
+                 '';
+                 src = super.writeShellScript "try.sh" ''
+                 nix shell "github:NixOS/nixpkgs/nixpkgs-unstable#$1" --command "$@"
+                 '';
+                 dontUnpack = true;
+                 dontBuild = true;
+                 dontConfigure = true;
+                 dontPatch = true;
+                 dontFixup = true;
+                 };
+                 otesunki-rmunzip = super.stdenv.mkDerivation rec {
+                 pname = "otesunki-rmunzip";
+                 version = "1.0";
+                 nativeBuildInputs = [];
+                 buildInputs = [];
+                 installPhase = ''
+                     mkdir -p $out/bin
+                     cp $src $out/bin/rmunzip
+                     '';
+                 src = super.writeShellScript "rmunzip.sh" ''
+                     unzip -qql "$*" | while read -r l d t n ; do rm -fr "$n" ; done
+                     '';
+                 dontUnpack = true;
+                 dontBuild = true;
+                 dontConfigure = true;
+                 dontPatch = true;
+                 dontFixup = true;
+                 };
+                })
+            ];
         in
             {
             # Build darwin flake using:
             # $ darwin-rebuild build --flake .#DarwinPro
             darwinConfigurations."DarwinPro" = nix-darwin.lib.darwinSystem {
                 modules = [
-                    configuration
+                    configuration-d
                     nix-homebrew.darwinModules.nix-homebrew
                     {
                         nix-homebrew = {
@@ -152,6 +164,20 @@
                         };
                     }
                 ];
+            };
+
+            nixosConfigurations.ASPC = nixpkgs.lib.nixosSystem { 
+                system = "x86_64-linux";
+                modules = [
+                    configuration-n
+                    nixos-wsl.nixosModules.default
+                    {
+                        system.stateVersion = "25.05";
+                        wsl.enable = true;
+                        wsl.defaultUser = "ali";
+                        nix.settings.experimental-features = ["nix-command" "flakes"];
+                    }
+                ];	
             };
         };
 }
